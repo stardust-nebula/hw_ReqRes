@@ -1,17 +1,17 @@
 package tests.reqRes;
 
+import com.google.gson.Gson;
+import io.restassured.response.Response;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import org.testng.asserts.SoftAssert;
 import reqRes.adapter.AccountAdapter;
 import reqRes.adapter.ResourceAdapter;
 import reqRes.adapter.UsersAdapter;
-import com.google.gson.Gson;
-import io.restassured.response.Response;
 import reqRes.model.Resource;
 import reqRes.model.ResourceList;
 import reqRes.model.User;
 import reqRes.model.UserAccount;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-import org.testng.asserts.SoftAssert;
 
 import static java.net.HttpURLConnection.*;
 
@@ -51,7 +51,7 @@ public class ReqResTest {
         Assert.assertTrue(isNumberResourceItemLessEqualsAllowed);
     }
 
-    @Test(testName = "GET SINGLE<RESOURCE>")
+    @Test(testName = "GET SINGLE<RESOURCE>", description = "Verify received resource object in the response")
     public void checkGetSingleResourceTest() {
         int resourceId = 2;
         String expected_name = "fuchsia rose";
@@ -83,7 +83,7 @@ public class ReqResTest {
         Assert.assertEquals(actualResource, expectedResource);
     }
 
-    @Test(testName = "SINGLE <RESOURCE> NOT FOUND")
+    @Test(testName = "SINGLE <RESOURCE> NOT FOUND", description = "Verify Not FOund status code on trying to get non-existing resource")
     public void checkGetSingleResourceNotFound() {
         int resourceId = 23;
         Response response = new ResourceAdapter().getSingleResourceById(resourceId);
@@ -186,7 +186,7 @@ public class ReqResTest {
         softAssert.assertAll();
     }
 
-    @Test(testName = "POST LOGIN - UNSUCCESSFUL")
+    @Test(testName = "POST LOGIN - UNSUCCESSFUL", description = "Verify status code and error message on trying to unsuccessfully login")
     public void checkPostLoginUnsuccessfulTest() {
         String email = "peter@klaven";
         String errorLabel = "error";
@@ -201,7 +201,7 @@ public class ReqResTest {
         softAssert.assertEquals(response.path(errorLabel), errorMessage, "Error message doesn't match");
     }
 
-    @Test(testName = "GET DELAYED RESPONSE")
+    @Test(testName = "GET DELAYED RESPONSE", description = "Verify 200 OK status code on trying to get users with delay")
     public void checkGetDelayedResponseTest() {
         int userId = 3;
         Response response = new UsersAdapter().getUserDelayed(userId);

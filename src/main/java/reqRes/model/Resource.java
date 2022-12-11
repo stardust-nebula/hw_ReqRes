@@ -1,4 +1,4 @@
-package model.reqres;
+package reqRes.model;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.Builder;

@@ -2,7 +2,7 @@ package tests.headHunter;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import model.head_hunter.VacanciesList;
+import head_hunter.model.VacanciesList;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;

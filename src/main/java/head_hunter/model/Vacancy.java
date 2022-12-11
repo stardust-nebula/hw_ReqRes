@@ -1,4 +1,4 @@
-package model.head_hunter;
+package head_hunter.model;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;

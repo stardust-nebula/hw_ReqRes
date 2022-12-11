@@ -1,96 +1,64 @@
 package tests.reqRes;
 
+import reqRes.adapter.AccountAdapter;
+import reqRes.adapter.ResourceAdapter;
+import reqRes.adapter.UsersAdapter;
 import com.google.gson.Gson;
 import io.restassured.response.Response;
-import model.reqres.Resource;
-import model.reqres.ResourceList;
-import model.reqres.User;
-import model.reqres.UserAccount;
+import reqRes.model.Resource;
+import reqRes.model.ResourceList;
+import reqRes.model.User;
+import reqRes.model.UserAccount;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.testng.asserts.SoftAssert;
 
-import static io.restassured.RestAssured.given;
 import static java.net.HttpURLConnection.*;
 
 public class ReqResTest {
-
-    private static String baseUrl = "https://reqres.in/";
 
     @Test(testName = "GET LIST USERS", description = "Verify opened page number")
     public void checkGetListUsersTest() {
         int requestedPageNumber = 2;
         String requestedJsonBodyPath = "page";
-        String endPoint = "api/users?page=" + requestedPageNumber;
-        Response response = given()
-                .when()
-                .get(baseUrl + endPoint)
-                .then()
-                .log().all()
-                .statusCode(HTTP_OK)
-                .extract().response();
-        int actualPageNumber = response.path(requestedJsonBodyPath);
+        int actualPageNumber = new UsersAdapter()
+                .getListUserByPageNumber(requestedPageNumber)
+                .path(requestedJsonBodyPath);
         Assert.assertEquals(actualPageNumber, requestedPageNumber);
     }
 
     @Test(testName = "GET SINGLE USER", description = "Verify user's email")
     public void checkGetSingleUserTest() {
         int userId = 2;
-        String endPoint = "api/users/" + userId;
         String expectedUsersEmail = "janet.weaver@reqres.in";
-
-        Response response = given()
-                .when()
-                .get(baseUrl + endPoint)
-                .then()
-                .log().all()
-                .statusCode(HTTP_OK)
-                .extract().response();
-        String actualUserEmail = response.jsonPath().getString("data.email");
+        String actualUserEmail = new UsersAdapter().getSingleUserById(userId).jsonPath().getString("data.email");
         Assert.assertEquals(actualUserEmail, expectedUsersEmail);
     }
 
     @Test(testName = "GET SINGLE USER NOT FOUND", description = "Verify 404 Not Found if try to get not existing user")
     public void checkGetSingleUserNotFoundTest() {
         int userId = 23;
-        String endpoint = "api/users/" + userId;
-        Response response = given()
-                .when()
-                .get(baseUrl + endpoint)
-                .then()
-                .log().all()
-                .statusCode(HTTP_NOT_FOUND)
-                .extract().response();
-        Assert.assertEquals(response.getStatusCode(), HTTP_NOT_FOUND);
+        Assert.assertEquals(new UsersAdapter().getSingleUserById(userId).statusCode(), HTTP_NOT_FOUND);
     }
 
     @Test(testName = "GET LIST<RESOURCE>", description = "Verify # per page >= # of elements on the page")
     public void checkGetListResourceTest() {
-        String endpoint = "api/unknown";
-        String responseBody = given()
-                .when()
-                .get(baseUrl + endpoint)
-                .then()
-                .log().all()
-                .statusCode(HTTP_OK)
-                .extract().body().asString();
-
+        String responseBody = new ResourceAdapter().getListResources().body().asString();
         ResourceList resourceList = new Gson().fromJson(responseBody, ResourceList.class);
         int numberPerPageItems = resourceList.getPerPage();
-        int numberRecourceItemsOnPage = resourceList.getData().size();
-        boolean isNumberRecourceItemLessEqualsAllowed = numberPerPageItems >= numberRecourceItemsOnPage;
-        Assert.assertTrue(isNumberRecourceItemLessEqualsAllowed);
+        int numberResourceItemsOnPage = resourceList.getData().size();
+        boolean isNumberResourceItemLessEqualsAllowed = numberPerPageItems >= numberResourceItemsOnPage;
+        Assert.assertTrue(isNumberResourceItemLessEqualsAllowed);
     }
 
     @Test(testName = "GET SINGLE<RESOURCE>")
     public void checkGetSingleResourceTest() {
         int resourceId = 2;
-        String endpoint = "api/unknown/";
-        int expected_id = 2;
         String expected_name = "fuchsia rose";
         int expected_year = 2001;
         String expected_color = "#C74375";
         String expected_pantoneValue = "17-2031";
+
         String actualIdPath = "data.id";
         String actualNamePath = "data.name";
         String actualYearPath = "data.year";
@@ -98,18 +66,13 @@ public class ReqResTest {
         String actualPantoneValuePath = "data.pantone_value";
 
         Resource expectedResource = Resource.builder()
-                .id(expected_id)
+                .id(resourceId)
                 .name(expected_name)
                 .year(expected_year)
                 .color(expected_color)
                 .pantoneValue(expected_pantoneValue)
                 .build();
-        Response response = given()
-                .when()
-                .get(baseUrl + endpoint + resourceId)
-                .then()
-                .log().all()
-                .extract().response();
+        Response response = new ResourceAdapter().getSingleResourceById(resourceId);
         Resource actualResource = Resource.builder()
                 .id(response.path(actualIdPath))
                 .name(response.path(actualNamePath))
@@ -123,93 +86,59 @@ public class ReqResTest {
     @Test(testName = "SINGLE <RESOURCE> NOT FOUND")
     public void checkGetSingleResourceNotFound() {
         int resourceId = 23;
-        String endpoint = "api/unknown/";
-        Response response = given()
-                .when()
-                .get(baseUrl + endpoint + resourceId)
-                .then()
-                .log().all()
-                .extract().response();
+        Response response = new ResourceAdapter().getSingleResourceById(resourceId);
         Assert.assertEquals(response.getStatusCode(), HTTP_NOT_FOUND);
     }
 
     @Test(testName = "POST CREATE", description = "Verify 201 CREATED status code")
     public void checkPostCreateUserTest() {
-        String url = "https://reqres.in/api/users";
+        String userName = "morpheus";
+        String userJob = "leader";
         User user = User.builder()
-                .name("morpheus")
-                .job("leader")
+                .name(userName)
+                .job(userJob)
                 .build();
-        Response response = given()
-                .body(user)
-                .when()
-                .post(url)
-                .then()
-                .log().all()
-                .extract().response();
-        Assert.assertEquals(response.statusCode(), HTTP_CREATED);
+        Assert.assertEquals(new UsersAdapter().createUser(user).statusCode(), HTTP_CREATED);
     }
 
-    @Test(testName = "PUT UPDATE")
+    @Test(testName = "PUT UPDATE", description = "Verify 200 OK status code")
     public void checkPutUpdateTest() {
-        int resourceId = 2;
-        String endpoint = "api/users/";
+        int userId = 2;
         String newName = "morpheus";
         String newJob = "zion resident";
         User user = User.builder()
                 .name(newName)
                 .job(newJob)
                 .build();
-        System.out.println("** User expected");
-        System.out.println(user);
-        Response response = given()
-                .body(user)
-                .log().body()
-                .when()
-                .put(baseUrl + endpoint + resourceId)
-                .then()
-                .log().body()
-                .extract().response();
+        Response response = new UsersAdapter().putUpdateUser(userId, user);
         Assert.assertEquals(response.statusCode(), HTTP_OK);
     }
 
-    @Test(testName = "DELETE USER")
+    @Test(testName = "DELETE USER", description = "Verify status code 204, response body is empty on delete user")
     public void checkDeleteUserTest() {
-        int resourceId = 2;
-        String endpoint = "api/users/";
-        Response response = given()
-                .when()
-                .delete(baseUrl + endpoint + resourceId)
-                .then()
-                .extract().response();
+        int userId = 2;
+        Response response = new UsersAdapter().deleteUser(userId);
+
         SoftAssert softAssert = new SoftAssert();
         softAssert.assertEquals(response.getStatusCode(), HTTP_NO_CONTENT);
         softAssert.assertTrue(response.body().asString().isEmpty());
         softAssert.assertAll();
     }
 
-    @Test(testName = "POST - REGISTER USER")
+    @Test(testName = "POST - REGISTER USER", description = "Verify response body on register user")
     public void checkPostRegisterUserTest() {
-        String endpoint = "api/register";
-        String contentType = "application/json";
         String email = "eve.holt@reqres.in";
         String password = "pistol";
 
         String idLabel = "id";
         String tokenLabel = "token";
+
         UserAccount userAccount = UserAccount.builder()
                 .email(email)
                 .password(password)
                 .build();
 
-        Response response = given()
-                .body(userAccount)
-                .contentType(contentType)
-                .log().body()
-                .when()
-                .post(baseUrl + endpoint)
-                .then()
-                .extract().response();
+        Response response = new AccountAdapter().registerUser(userAccount);
         String body = response.body().asString();
 
         boolean isIdEmpty = response.body().path(idLabel).toString().isEmpty();
@@ -223,51 +152,32 @@ public class ReqResTest {
         softAssert.assertAll();
     }
 
-    @Test(testName = "POST REGISTER - UNSUCCESSFUL")
+    @Test(testName = "POST REGISTER - UNSUCCESSFUL", description = "Verify error message in response on " +
+            "unsuccessful registration")
     public void checkPostRegisterUnsuccessfulTest() {
-        String endpoint = "api/register";
-        String contentType = "application/json";
         String email = "tests@mail";
         String errorLabel = "error";
         String errorMessage = "Missing password";
         UserAccount userAccount = UserAccount.builder()
                 .email(email)
                 .build();
-
-        Response response = given()
-                .body(userAccount)
-                .contentType(contentType)
-                .when()
-                .post(baseUrl + endpoint)
-                .then()
-                .extract().response();
-
+        Response response = new AccountAdapter().registerUser(userAccount);
         SoftAssert softAssert = new SoftAssert();
         softAssert.assertTrue(response.body().asString().contains(errorLabel), "'error' label is missing");
         softAssert.assertEquals(response.path(errorLabel), errorMessage, "Error message doesn't match");
         softAssert.assertEquals(response.getStatusCode(), HTTP_BAD_REQUEST, "Status code doesn't match");
     }
 
-    @Test(testName = "POST LOGIN - SUCCESSFUL")
+    @Test(testName = "POST LOGIN - SUCCESSFUL", description = "Verify response on successful login")
     public void checkPostLoginSuccessfulTest() {
-        String endpoint = "api/login";
-        String contentType = "application/json";
         String email = "eve.holt@reqres.in";
         String password = "cityslicka";
         String tokenLabel = "token";
-
         UserAccount userAccount = UserAccount.builder()
                 .email(email)
                 .password(password)
                 .build();
-
-        Response response = given()
-                .body(userAccount)
-                .contentType(contentType)
-                .when()
-                .post(baseUrl + endpoint)
-                .then()
-                .extract().response();
+        Response response = new AccountAdapter().login(userAccount);
 
         SoftAssert softAssert = new SoftAssert();
         softAssert.assertEquals(response.getStatusCode(), HTTP_OK);
@@ -278,24 +188,13 @@ public class ReqResTest {
 
     @Test(testName = "POST LOGIN - UNSUCCESSFUL")
     public void checkPostLoginUnsuccessfulTest() {
-        String endpoint = "api/login";
-        String contentType = "application/json";
         String email = "peter@klaven";
         String errorLabel = "error";
         String errorMessage = "Missing password";
-
         UserAccount userAccount = UserAccount.builder()
                 .email(email)
                 .build();
-
-        Response response = given()
-                .body(userAccount)
-                .contentType(contentType)
-                .when()
-                .post(baseUrl + endpoint)
-                .then()
-                .extract().response();
-
+        Response response = new AccountAdapter().login(userAccount);
         SoftAssert softAssert = new SoftAssert();
         softAssert.assertEquals(response.getStatusCode(), HTTP_BAD_REQUEST, "Status code doesn't match");
         softAssert.assertTrue(response.body().asString().contains(errorLabel), "'error' label is missing");
@@ -304,12 +203,8 @@ public class ReqResTest {
 
     @Test(testName = "GET DELAYED RESPONSE")
     public void checkGetDelayedResponseTest() {
-        String endpoint = "/api/users?delay=3";
-        Response response = given()
-                .when()
-                .get(baseUrl + endpoint)
-                .then()
-                .extract().response();
+        int userId = 3;
+        Response response = new UsersAdapter().getUserDelayed(userId);
         Assert.assertEquals(response.statusCode(), HTTP_OK);
     }
 }
